@@ -51,7 +51,7 @@ func fetchProducts(key string) ([]string, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.New(errInvalidHTTPResponseCode.Error() + fmt.Sprintf("%d", resp.StatusCode))
+		return nil, errors.New(fmt.Sprintf("%s: %d", errInvalidHTTPResponseCode.Error(), resp.StatusCode))
 	}
 
 	data, err := ioutil.ReadAll(resp.Body)
