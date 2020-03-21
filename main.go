@@ -111,21 +111,19 @@ func updateLoop(key string) {
 	}
 	log.Printf("%d products loaded.\n", len(products))
 
-	index := 0
 	for {
-		productId := products[index]
-		err := updatePrice(key, productId)
-		if err != nil {
-			log.Fatalln(err.Error())
+		log.Println("Data update started")
+		for _, productId := range products {
+			err := updatePrice(key, productId)
+			if err != nil {
+				log.Fatalln(err.Error())
+			}
+
+			time.Sleep(time.Minute / (maxCallPerMinute - 20))
 		}
 
-		index += 1
-		if index == len(products) {
-			index = 0
-			time.Sleep(waitBetweenRefresh)
-		}
-
-		time.Sleep(time.Minute / (maxCallPerMinute - 20))
+		log.Println("Data update completed")
+		time.Sleep(waitBetweenRefresh)
 	}
 }
 
