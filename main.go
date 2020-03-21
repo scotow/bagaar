@@ -123,7 +123,7 @@ func updateLoop(key string) {
 			index = 0
 		}
 
-		time.Sleep(time.Minute / (maxCallPerMinute - 5))
+		time.Sleep(time.Minute / (maxCallPerMinute + 5))
 	}
 }
 
