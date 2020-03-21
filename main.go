@@ -20,7 +20,8 @@ const (
 )
 
 var (
-	errFailResponse = errors.New("api response with bad status")
+	errInvalidHTTPResponseCode = errors.New("api responded with non 200 status code")
+	errFailResponse = errors.New("api responded with bad status")
 )
 
 var (
@@ -50,7 +51,7 @@ func fetchProducts(key string) ([]string, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, errFailResponse
+		return nil, errors.New(errInvalidHTTPResponseCode.Error() + fmt.Sprintf("%d", resp.StatusCode))
 	}
 
 	data, err := ioutil.ReadAll(resp.Body)
@@ -79,7 +80,7 @@ func updatePrice(key string, productId string) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return errFailResponse
+		return errors.New(errInvalidHTTPResponseCode.Error() + fmt.Sprintf("%d", resp.StatusCode))
 	}
 
 	data, err := ioutil.ReadAll(resp.Body)
