@@ -147,7 +147,7 @@ func priceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(fmt.Sprintf("%.0f", price)))
+	_, _ = w.Write([]byte(fmt.Sprintf("%.2f", price)))
 }
 
 func main() {
