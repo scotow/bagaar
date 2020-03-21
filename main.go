@@ -80,7 +80,7 @@ func updatePrice(key string, productId string) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.New(errInvalidHTTPResponseCode.Error() + fmt.Sprintf("%d", resp.StatusCode))
+		return errors.New(fmt.Sprintf("%s: %d", errInvalidHTTPResponseCode.Error(), resp.StatusCode))
 	}
 
 	data, err := ioutil.ReadAll(resp.Body)
@@ -114,13 +114,15 @@ func updateLoop(key string) {
 
 	for {
 		log.Println("Data update started")
-		for _, productId := range products {
+		for i := 0; i < len(products); i++ {
+			productId := products[i]
 			err := updatePrice(key, productId)
 			if err != nil {
-				log.Fatalln(err.Error())
+				log.Println(err.Error())
+				i -= 1
 			}
 
-			time.Sleep(time.Minute / (maxCallPerMinute - 20))
+			time.Sleep(time.Minute / (maxCallPerMinute * 2))
 		}
 
 		log.Println("Data update completed")
