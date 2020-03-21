@@ -26,7 +26,7 @@ var (
 
 var (
 	priceLock = sync.RWMutex{}
-	priceMap = make(map[string]float64)
+	priceMap = make(map[string]*ProductPrice)
 )
 
 type ProductsResponse struct {
@@ -34,11 +34,17 @@ type ProductsResponse struct {
 	ProductIds []string `json:"productIds"`
 }
 
+type ProductPrice struct {
+	Buy float64
+	Sell float64
+}
+
 type ProductResponse struct {
 	Success bool `json:"success"`
 	Info struct {
 		Recap struct {
-			Price float64 `json:"buyPrice"`
+			Buy float64 `json:"buyPrice"`
+			Sell float64 `json:"sellPrice"`
 		} `json:"quick_status"`
 	} `json:"product_info"`
 }
@@ -98,8 +104,12 @@ func updatePrice(key string, productId string) error {
 		return errFailResponse
 	}
 
+	price := new(ProductPrice)
+	price.Buy = info.Info.Recap.Buy
+	price.Sell = info.Info.Recap.Sell
+
 	priceLock.Lock()
-	priceMap[productId] = info.Info.Recap.Price
+	priceMap[productId] = price
 	priceLock.Unlock()
 
 	return nil
@@ -130,27 +140,46 @@ func updateLoop(key string) {
 	}
 }
 
-func priceHandler(w http.ResponseWriter, r *http.Request) {
+func priceHandler(w http.ResponseWriter, r *http.Request) (pp *ProductPrice) {
 	parts := strings.Split(r.RequestURI, "/")
 	if len(parts) < 1 {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _  = w.Write([]byte("invalid product ID"))
-		return
+		return nil
 	}
 
 	productId := parts[len(parts) - 1]
 	priceLock.RLock()
 	defer priceLock.RUnlock()
 
-	price, ok := priceMap[productId]
+	pp, ok := priceMap[productId]
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		_, _  = w.Write([]byte("invalid product ID or price not in cache"))
+		return nil
+	}
+
+	return pp
+}
+
+func buyPriceHandler(w http.ResponseWriter, r *http.Request) {
+	pp := priceHandler(w, r)
+	if pp == nil {
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(fmt.Sprintf("%.2f", price)))
+	_, _ = w.Write([]byte(fmt.Sprintf("%.2f", pp.Sell)))
+}
+
+func sellPriceHandler(w http.ResponseWriter, r *http.Request) {
+	pp := priceHandler(w, r)
+	if pp == nil {
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(fmt.Sprintf("%.2f", pp.Buy)))
 }
 
 func main() {
@@ -161,6 +190,7 @@ func main() {
 	key := os.Args[1]
 	go updateLoop(key)
 
-	http.HandleFunc("/", priceHandler)
+	http.HandleFunc("/buy/", buyPriceHandler)
+	http.HandleFunc("/sell/", sellPriceHandler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
