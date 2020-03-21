@@ -16,6 +16,7 @@ import (
 const (
 	apiEndpoint = "https://api.hypixel.net/skyblock/bazaar"
 	maxCallPerMinute = 120
+	waitBetweenRefresh = time.Minute * 30
 )
 
 var (
@@ -121,6 +122,7 @@ func updateLoop(key string) {
 		index += 1
 		if index == len(products) {
 			index = 0
+			time.Sleep(waitBetweenRefresh)
 		}
 
 		time.Sleep(time.Minute / (maxCallPerMinute - 20))
