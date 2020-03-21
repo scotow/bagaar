@@ -110,7 +110,7 @@ func updateLoop(key string) {
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
-	log.Printf("%d products loaded.\n", len(products))
+	log.Printf("%d products loaded\n", len(products))
 
 	for {
 		log.Println("Data update started")
