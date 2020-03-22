@@ -182,6 +182,16 @@ func sellPriceHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(fmt.Sprintf("%.2f", pp.Buy)))
 }
 
+func csvHandler(w http.ResponseWriter, r *http.Request) {
+	priceLock.RLock()
+	defer priceLock.RUnlock()
+
+	w.WriteHeader(http.StatusOK)
+	for productId, pp := range priceMap {
+		w.Write([]byte(fmt.Sprintf("%s,%.2f,%.2f\n", productId, pp.Sell, pp.Buy)))
+	}
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		log.Fatalln("API key missing")
@@ -190,6 +200,7 @@ func main() {
 	key := os.Args[1]
 	go updateLoop(key)
 
+	http.HandleFunc("/csv", csvHandler)
 	http.HandleFunc("/buy/", buyPriceHandler)
 	http.HandleFunc("/sell/", sellPriceHandler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
