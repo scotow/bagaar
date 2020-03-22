@@ -141,7 +141,7 @@ func updateLoop(key string) {
 }
 
 func priceHandler(w http.ResponseWriter, r *http.Request) (pp *ProductPrice) {
-	parts := strings.Split(r.RequestURI, "/")
+	parts := strings.Split(strings.TrimRight(r.URL.Path, "/"), "/")
 	if len(parts) < 1 {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _  = w.Write([]byte("invalid product ID"))
