@@ -14,36 +14,36 @@ import (
 )
 
 const (
-	apiEndpoint = "https://api.hypixel.net/skyblock/bazaar"
-	maxCallPerMinute = 120
+	apiEndpoint        = "https://api.hypixel.net/skyblock/bazaar"
+	maxCallPerMinute   = 120
 	waitBetweenRefresh = time.Minute * 2
 )
 
 var (
 	errInvalidHTTPResponseCode = errors.New("api responded with non 200 status code")
-	errFailResponse = errors.New("api responded with bad status")
+	errFailResponse            = errors.New("api responded with bad status")
 )
 
 var (
 	priceLock = sync.RWMutex{}
-	priceMap = make(map[string]*ProductPrice)
+	priceMap  = make(map[string]*ProductPrice)
 )
 
 type ProductsResponse struct {
-	Success bool `json:"success"`
+	Success    bool     `json:"success"`
 	ProductIds []string `json:"productIds"`
 }
 
 type ProductPrice struct {
-	Buy float64
+	Buy  float64
 	Sell float64
 }
 
 type ProductResponse struct {
 	Success bool `json:"success"`
-	Info struct {
+	Info    struct {
 		Recap struct {
-			Buy float64 `json:"buyPrice"`
+			Buy  float64 `json:"buyPrice"`
 			Sell float64 `json:"sellPrice"`
 		} `json:"quick_status"`
 	} `json:"product_info"`
@@ -140,55 +140,49 @@ func updateLoop(key string) {
 	}
 }
 
-func priceHandler(w http.ResponseWriter, r *http.Request) (pp *ProductPrice) {
-	parts := strings.Split(strings.TrimRight(r.URL.Path, "/"), "/")
-	if len(parts) < 1 {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _  = w.Write([]byte("invalid product ID"))
-		return nil
+type productHandler func(*ProductPrice, http.ResponseWriter)
+
+func priceHandler(f productHandler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		parts := strings.Split(strings.TrimRight(r.URL.Path, "/"), "/")
+		if len(parts) < 1 {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("invalid product ID"))
+			return
+		}
+
+		productId := parts[len(parts)-1]
+		priceLock.RLock()
+		defer priceLock.RUnlock()
+
+		pp, ok := priceMap[productId]
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("invalid product ID or price not in cache"))
+			return
+		}
+
+		f(pp, w)
 	}
-
-	productId := parts[len(parts) - 1]
-	priceLock.RLock()
-	defer priceLock.RUnlock()
-
-	pp, ok := priceMap[productId]
-	if !ok {
-		w.WriteHeader(http.StatusNotFound)
-		_, _  = w.Write([]byte("invalid product ID or price not in cache"))
-		return nil
-	}
-
-	return pp
 }
 
-func buyPriceHandler(w http.ResponseWriter, r *http.Request) {
-	pp := priceHandler(w, r)
-	if pp == nil {
-		return
-	}
-
+func buyPriceHandler(pp *ProductPrice, w http.ResponseWriter) {
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(fmt.Sprintf("%.2f", pp.Sell)))
 }
 
-func sellPriceHandler(w http.ResponseWriter, r *http.Request) {
-	pp := priceHandler(w, r)
-	if pp == nil {
-		return
-	}
-
+func sellPriceHandler(pp *ProductPrice, w http.ResponseWriter) {
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(fmt.Sprintf("%.2f", pp.Buy)))
 }
 
-func csvHandler(w http.ResponseWriter, r *http.Request) {
+func csvHandler(w http.ResponseWriter, _ *http.Request) {
 	priceLock.RLock()
 	defer priceLock.RUnlock()
 
 	w.WriteHeader(http.StatusOK)
 	for productId, pp := range priceMap {
-		w.Write([]byte(fmt.Sprintf("%s,%.2f,%.2f\n", productId, pp.Sell, pp.Buy)))
+		_, _ = w.Write([]byte(fmt.Sprintf("%s,%.2f,%.2f\n", productId, pp.Sell, pp.Buy)))
 	}
 }
 
@@ -201,7 +195,7 @@ func main() {
 	go updateLoop(key)
 
 	http.HandleFunc("/csv", csvHandler)
-	http.HandleFunc("/buy/", buyPriceHandler)
-	http.HandleFunc("/sell/", sellPriceHandler)
+	http.HandleFunc("/buy/", priceHandler(buyPriceHandler))
+	http.HandleFunc("/sell/", priceHandler(sellPriceHandler))
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
