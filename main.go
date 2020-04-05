@@ -116,20 +116,25 @@ func updatePrice(key string, productId string) error {
 }
 
 func updateLoop(key string) {
-	products, err := fetchProducts(key)
-	if err != nil {
-		log.Fatalln(err.Error())
-	}
-	log.Printf("%d products loaded\n", len(products))
-
-	for {
-		log.Println("Data update started")
-		for i := 0; i < len(products); i++ {
-			productId := products[i]
-			err := updatePrice(key, productId)
+	for i := 0; ; i = (i + 1) % 1000 {
+		var products []string
+		if i == 0 {
+			resp, err := fetchProducts(key)
 			if err != nil {
 				log.Println(err.Error())
 				i -= 1
+			}
+			products = resp
+			log.Printf("%d products loaded\n", len(products))
+		}
+
+		log.Println("Data update started")
+		for p := 0; p < len(products); p++ {
+			productId := products[p]
+			err := updatePrice(key, productId)
+			if err != nil {
+				log.Println(err.Error())
+				p -= 1
 			}
 
 			time.Sleep(time.Minute / (maxCallPerMinute - 5))
