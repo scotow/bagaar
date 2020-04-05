@@ -116,8 +116,8 @@ func updatePrice(key string, productId string) error {
 }
 
 func updateLoop(key string) {
+	var products []string
 	for i := 0; ; i = (i + 1) % 1000 {
-		var products []string
 		if i == 0 {
 			resp, err := fetchProducts(key)
 			if err != nil {
